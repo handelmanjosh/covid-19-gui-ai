@@ -1,14 +1,26 @@
 
+export class Virus {
+    infectivity: number; // chance one infected has to infect a susceptible it was in contact with
+    recoveryTime: number; // days until infected is recovered
+    startedInfected: number;
+    constructor(infectivity: number, recoveryTime: number, startedInfected: number) {
+        this.infectivity = infectivity;
+        this.recoveryTime = recoveryTime;
+        this.startedInfected = startedInfected;
+    }
+}
 export class PersonController {
     PersonList: Person[];
     canvas: HTMLCanvasElement;
     context: CanvasRenderingContext2D;
     infectivity: number;
-    constructor(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
+    Virus: Virus;
+    constructor(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D, virus: Virus) {
         this.PersonList = [];
         this.canvas = canvas;
         this.context = context;
         this.infectivity = 10;
+        this.Virus = virus;
     }
     draw = () => {
         this.PersonList.forEach(person => {
@@ -21,43 +33,49 @@ export class PersonController {
             this.PersonList.push(p);
         }
     }
-    initInfection = (n: number) => {
-        for (let i = 0; i < n; i++) {
+    initInfection = () => {
+        for (let i = 0; i < this.Virus.startedInfected; i++) {
             this.PersonList[i].state = "i";
+            this.PersonList[i].recoveryTime = this.Virus.recoveryTime;
         }
     }
     infect = () => {
         this.PersonList.forEach(person1 => {
             if (person1.state === "i") {
-                 this.PersonList.forEach(person2 => {
-                    let num = Math.random() * 100;
-                    if (num < this.infectivity) {
-                        person2.state = "i";
-                    }
+                this.PersonList.forEach(person2 => {
+                    if (person2.state === "s" && personDistance(person1, person2) < person1.radius) {
+                        const rnum = Math.random();
+                        if (rnum < this.Virus.infectivity) {
+                            person2.state = "i";
+                            person2.recoveryTime = this.Virus.recoveryTime;
+                        }
+                    }   
                 });
             }
 
         });
     }
 }
+const personDistance = (p1: Person, p2: Person) => {
+    return Math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2);
+}
 
 export default class Person {
     x: number;
     y: number;
-    vx: number;
-    vy: number;
+    radius: number;
     state: "s" | "i" | "r";
     context: CanvasRenderingContext2D;
     canvasWidth: number;
     canvasHeight: number;
+    recoveryTime: number | undefined;
     constructor(x: number, y: number, vMax: number, context: CanvasRenderingContext2D, width: number, height: number) {
         this.x = x;
         this.y = y;
-        this.vx = Math.cos(Math.random() * 2 * Math.PI) * vMax;
-        this.vy = Math.sin(Math.random() * 2 * Math.PI) * vMax;
         this.canvasHeight = height;
         this.canvasWidth = width;
         this.state = "s";
+        this.radius = 2;
         this.context = context;
     }   
     draw = () => {
@@ -65,36 +83,23 @@ export default class Person {
         let color = (this.state === "s") ? "blue" : (this.state === "r") ? "green" : "red";
         this.context.beginPath();
         this.context.fillStyle = color;
-        this.context.arc(this.x, this.y, 4, 0, 2 * Math.PI);
+        this.context.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
         this.context.fill();
     }
     move = () => {
-        this.x += this.vx;
-        this.y += this.vy;
-        this.checkBounding();
-    }
-    checkBounding = () => {
-        if (this.x > this.canvasWidth) {
-            this.vx = negative(this.vx);
-        }
-        if (this.y > this.canvasHeight) {
-            this.vy = negative(this.vy);
-        }
-        if (this.x < 0) {
-            this.vx = positive(this.vx);
-        }
-        if (this.y < 0) {
-            this.vy = positive(this.vy);
+        if (this.recoveryTime !== undefined) {
+            if (this.recoveryTime > 0) {
+                this.recoveryTime--;
+            } else {
+                this.state = "r";
+                this.recoveryTime = undefined;
+                
+            }
         }
     }
 }
 
-const negative = (n: number) => {
-    return (n > 0) ? -1 * n : n;
-}
-const positive = (n: number) => {
-    return (n > 0) ? n : -1 * n;
-}
+
 const randomBetween = (a: number, b: number) => {
     return a + (Math.random() * (b - a))
 }

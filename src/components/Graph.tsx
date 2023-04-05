@@ -55,7 +55,7 @@ export default function Graph({title, color, getParameter, max, min}: GraphProps
     return (
         <div className="flex flex-col justify-center items-center gap-2">
             <p className="text-black"> {title} </p>
-            <canvas ref={canvasRef} />
+            <canvas className="border-2 border-black" ref={canvasRef} />
         </div>
     )
 }
