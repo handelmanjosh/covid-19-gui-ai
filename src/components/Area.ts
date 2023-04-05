@@ -7,19 +7,23 @@ type Direction = "top" | "bottom" | "left" | "right";
 type AreaRole = "work" | "social" | "housing" | "shopping" | "none";
 type ScaledOption<T> = [T, number][]
 type Maybe<T> = T | null;
-const housingOptions: ScaledOption<AreaRole> = [["work", 100], ["social", 50], ["housing", 75], ["shopping", 31]];
+type OrganizedAreaList = {work: number[][], social: number[][], housing: number[][], shopping: number[][]};
+
+
 const housingColors: {work: string, social: string, housing: string, shopping: string, none: string} = {work: "orange", social: "cyan", housing: "gray", shopping: "magenta", none: "red"}
 
 
 export class AreaController {
     AreaList: Area[][];
     Obstacles: number[][];
-    OrganizedAreaList: {work: Area[], social: Area[], housing: Area[], shopping: Area[]};
+    OrganizedAreaList: OrganizedAreaList;
     canvas: HTMLCanvasElement;
     context: CanvasRenderingContext2D;
+    delta: number;
     constructor(num: number, canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
         //canvas must be square
         if (canvas.width !== canvas.height) throw new Error("Incorrect canvas dimensions");
+        const housingOptions: ScaledOption<AreaRole> = [["work", 100], ["social", 50], ["housing", 75], ["shopping", 31]];
         this.AreaList = [];
         this.Obstacles = [];
         this.OrganizedAreaList = {work: [], social: [], housing: [], shopping: []}
@@ -27,6 +31,7 @@ export class AreaController {
         this.context = context;
         
         const delta = canvas.width / num;
+        this.delta = delta;
         let count = 0;
 
         // a maze generation algorithm for blind people
@@ -92,27 +97,30 @@ export class AreaController {
         }
     }
     organizeAreas = () => {
-        console.log("organize areas called");
         let i = 0
         for (const areaList of this.AreaList) {
             let ii = 0;
             for (const area of areaList) {
                 if (!checkArea(area, this.AreaList, ii, i)) area.type = "none";
                 if (area.type !== "none") {
-                    this.OrganizedAreaList[area.type].push(area);
+                    this.OrganizedAreaList[area.type].push(this.toCoords(area));
+                    //console.log(this.toCoords(area), area.x, area.y);
                 }
                 ii++;
             }
             i++;
         }
     }
+    toCoords = (a: Area): number[] => {
+        return [a.x / this.delta, a.y / this.delta];
+    }
     draw = () => {
-        this.AreaList.forEach((areaList) => areaList.forEach((area) => area.draw(this.context)))
+        this.AreaList.forEach((areaList) => areaList.forEach((area) => area.drawBackground(this.context)));
+        this.AreaList.forEach((areaList) => areaList.forEach((area) => area.drawBorders(this.context)));
     }
 }
 
 const checkArea = (a: Area, areaList: Area[][], x: number, y: number): boolean => {
-    
     let leftArea: Maybe<Area> = (x - 1 > -1) ? areaList[y][x - 1] : null;
     let rightArea: Maybe<Area> = (x + 1 < areaList[0].length) ? areaList[y][x + 1] : null;
     let topArea: Maybe<Area> = (y - 1 > -1) ? areaList[y - 1][x] : null;
@@ -134,13 +142,13 @@ const checkArea = (a: Area, areaList: Area[][], x: number, y: number): boolean =
         }
     }
     if (topArea) {
-        if (a.walls[0] === 0 && topArea.walls[3] === 0) {
+        if (a.walls[0] === 0 && topArea.walls[2] === 0) {
             return true;
         }
     }
     return false;
 }
-const getRandomScaledOption = (option: ScaledOption<any>) : any => {    
+function getRandomScaledOption<T>(option: ScaledOption<T>): T {    
     const index = Math.floor(Math.random() * option.length);
     option[index][1]--;
     const result =  option[index][0]
@@ -176,9 +184,11 @@ export class Area {
         }
         this.type = type;
     }
-    draw = (context: CanvasRenderingContext2D) => {
+    drawBackground = (context: CanvasRenderingContext2D) => {
         context.fillStyle = housingColors[this.type];
         context.fillRect(this.x, this.y, this.width, this.width);
+    }
+    drawBorders = (context: CanvasRenderingContext2D) => {
         context.beginPath();
         context.strokeStyle = "black"
         context.lineWidth = 5;
@@ -192,6 +202,7 @@ export class Area {
             }
         }
         context.stroke();
+        //this.SpaceList.forEach(spaceList => spaceList.forEach(space => space.draw()))
     }
 }
 const color = ['blue', 'red', 'orange', 'black', 'white', 'gray', 'green', 'cyan', 'magenta']
@@ -205,26 +216,71 @@ export class Space {
         this.y = y;
         this.color = color[Math.floor(Math.random() * color.length)];
     }
-    draw = (context: CanvasRenderingContext2D) => {
-
-    }
+    draw = (context: CanvasRenderingContext2D) => null
 }
-const scheduleParams: ScaledOption<AreaRole> = [["housing" , 3], ["shopping", 1], ["social", 3], ["work", 5]]
+const getRandomOfType = (list: OrganizedAreaList, role: Exclude<AreaRole, "none">) => {
+    const options = list[role];
+    return options[Math.floor(Math.random() * options.length)];
+}
+const getRandomWithinArea = () => {
+    return [Math.floor(Math.random() * miniPath.length), Math.floor(Math.random() * miniPath.length)];
+}
 export class Schedule {
     PathList: Path[];
-    index: number;
+    private index: number;
     constructor(areaController: AreaController) {
         this.PathList = [];
         this.index = 0;
+        const scheduleParams: ScaledOption<Exclude<AreaRole, "none">> = [["housing" , 3], ["shopping", 1], ["social", 3], ["work", 5]]
+        const house: number[][] = this.makeHouse(areaController.OrganizedAreaList);
+        const schedule: number[][][] = [house, ];
+        for (let i = 0; i < 12; i++){
+            const option = getRandomScaledOption(scheduleParams);
+            if (option === "housing") {
+                schedule.push(house);
+            } else {
+                const location = getRandomOfType(areaController.OrganizedAreaList, option);
+                const miniLocation = getRandomWithinArea();
+                schedule.push([location, miniLocation]);
+            }
+        }
+        for (let i = 0; i < schedule.length - 1; i++) {
+            const current = schedule[i];
+            const next = schedule[i+1];
+            const path = new Path(areaController, current, next);
+            this.PathList.push(path);
+        }
+        const current = schedule[schedule.length - 1];
+        const next = schedule[0];
+        const path = new Path(areaController, current, next);
+        this.PathList.push(path);
+    }
+    makeHouse = (list: OrganizedAreaList): number[][] => {
+        const house = getRandomOfType(list, "housing");
+        const index = getRandomWithinArea();
+        return [house, index];
     }
     next = (): number[][] | null => {
-        const n = this.PathList[this.index].next();
+        let n = this.PathList[this.index].next();
         if (n == null) {
-            this.index++;
             return null;
         } else {
             return n;
         }
+    }
+    nextIndex = (): boolean => {
+        this.index++;
+        if (this.index >= this.PathList.length) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+    reset = () => {
+        this.index = 0;
+        this.PathList.forEach(path => {
+            path.reset();
+        });
     }
 }
 
@@ -235,7 +291,7 @@ export class Schedule {
 // and must move to Space [7, 7] in Area [5, 6]
 export class Path {
     path: number[][][];
-    index: number;
+    private index: number;
     constructor(areaController: AreaController, start: number[][], end: number[][]) {
         this.path = []
         this.index = 0;
@@ -304,7 +360,6 @@ export class Path {
                 }
             }
         }
-        console.log(this.path);
     }
     next = (): number[][] | null => {
         if (this.index >= this.path.length) {
@@ -314,6 +369,9 @@ export class Path {
             this.index++;
             return c;
         }
+    }
+    reset = () => {
+        this.index = 0;
     }
 }
 

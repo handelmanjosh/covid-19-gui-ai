@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { PersonController, Virus } from './components/Person';
 import Graph from './components/Graph';
-import { AreaController, Path } from './components/Area';
+import { AreaController, Path, Schedule } from './components/Area';
 
 let canvas: HTMLCanvasElement;
 let context: CanvasRenderingContext2D;
@@ -9,7 +9,7 @@ let people: PersonController;
 let environment: AreaController;
 let ran = 0;
 const population = 100;
-const myPath: {path: number[][][], index: number, interval: any} = {path: [], index: 0, interval: null}
+const mySchedule: {schedule: Schedule | null, interval: any, time: number} = {schedule: null, interval: null, time: 0}
 function App() {
   useEffect(() => {
       if (ran === 1) return;
@@ -18,17 +18,15 @@ function App() {
       canvas.height = 800;
       canvas.width = 800;
       const virus = new Virus(1, 1000, 5);
-      people = new PersonController();
       environment = new AreaController(16, canvas, context);
+      people = new PersonController(10, environment, virus, canvas, context);
       requestAnimationFrame(frame);
       ran++;
   }, []);
   const frame = () => {
     resetCanvas();
     environment.draw();
-    //people.draw();
-    //people.infect();
-    return; //bad, remove later
+    people.draw();
     requestAnimationFrame(frame);
   }
   const resetCanvas = () => {
@@ -62,24 +60,35 @@ function App() {
     }
     return total;
   }
+  
   const click = () => {
-    const path = new Path(environment, [[0, 0], [0, 0]], [[15, 15], [5, 5]]);
-    myPath.interval = setInterval(tempMoveAndDraw, 100)
-    myPath.path = path.path;
+    const schedule = new Schedule(environment);
+    console.log("clicked");
+    console.log(schedule.PathList);
+    mySchedule.schedule = schedule
+    mySchedule.time = 0;
+    mySchedule.interval = setInterval(tempMoveAndDraw, 20);
   }
   const tempMoveAndDraw = () => {
-    if (myPath.index >= myPath.path.length) {
-      myPath.index = 0;
-      clearInterval(myPath.interval);
-    } else {
+    const next = mySchedule.schedule?.next();
+    console.log(mySchedule.time);
+    mySchedule.time++;
+    if (next) {
+      const location = next;
+      const width = canvas.width / 16;
+      const big = location[0];
+      const mini = location[1];
       context.fillStyle = "red";
-      const here = myPath.path[myPath.index];
-      const large = here[0];
-      const mini = here[1];
-      const width = canvas.width /16;
-      const microWidth = 2;
-      context.fillRect(width * large[0] + microWidth * mini[0], width * large[1] + microWidth * mini[1], microWidth, microWidth);
-      myPath.index++;
+      context.fillRect(big[0] * width + mini[0] * 2, big[1] * width + mini[1] * 2, 2, 2);
+    } else {
+      if (mySchedule.time >= 1000) {
+        mySchedule.time = 0;
+        const value = mySchedule.schedule?.nextIndex();
+        if (!value) {
+          clearInterval(mySchedule.interval);
+        }
+      }
+
     }
   }
 
