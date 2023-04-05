@@ -1,3 +1,10 @@
+
+# Project Info
+
+This is an agent based model that generates a realistic environment for the agents to interact within and then modulates the behavior of these agents based upon external factors
+
+
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).

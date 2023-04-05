@@ -7,26 +7,27 @@ let canvas: HTMLCanvasElement;
 let context: CanvasRenderingContext2D;
 let people: PersonController;
 let environment: AreaController;
+let ran = 0;
 const population = 100;
-const myPath: {path: any, index: number, interval: any} = {path: null, index: 0, interval: null}
+const myPath: {path: number[][][], index: number, interval: any} = {path: [], index: 0, interval: null}
 function App() {
   useEffect(() => {
+      if (ran === 1) return;
       canvas = document.getElementById("canvas") as HTMLCanvasElement; 
       context = canvas.getContext("2d")!;
       canvas.height = 800;
       canvas.width = 800;
       const virus = new Virus(1, 1000, 5);
-      people = new PersonController(canvas, context, virus);
+      people = new PersonController();
       environment = new AreaController(16, canvas, context);
-      people.gen(population);
-      people.initInfection();
       requestAnimationFrame(frame);
+      ran++;
   }, []);
   const frame = () => {
     resetCanvas();
     environment.draw();
-    people.draw();
-    people.infect();
+    //people.draw();
+    //people.infect();
     return; //bad, remove later
     requestAnimationFrame(frame);
   }
@@ -62,22 +63,24 @@ function App() {
     return total;
   }
   const click = () => {
-    const path = new Path(environment, [[0, 0], []], [[1, 1], []]);
-    myPath.interval = setInterval(tempMoveAndDraw, 300)
+    const path = new Path(environment, [[0, 0], [0, 0]], [[15, 15], [5, 5]]);
+    myPath.interval = setInterval(tempMoveAndDraw, 100)
     myPath.path = path.path;
   }
   const tempMoveAndDraw = () => {
     if (myPath.index >= myPath.path.length) {
+      myPath.index = 0;
       clearInterval(myPath.interval);
     } else {
-      console.log(myPath.index);
       context.fillStyle = "red";
-      const width = canvas.width / 16;
-      console.log(myPath.path[myPath.index][0] * width, myPath.path[myPath.index][1] * width, width)
-      context.fillRect(myPath.path[myPath.index][0] * width, myPath.path[myPath.index][1] * width, width, width);
+      const here = myPath.path[myPath.index];
+      const large = here[0];
+      const mini = here[1];
+      const width = canvas.width /16;
+      const microWidth = 2;
+      context.fillRect(width * large[0] + microWidth * mini[0], width * large[1] + microWidth * mini[1], microWidth, microWidth);
       myPath.index++;
     }
-    
   }
 
   return (
