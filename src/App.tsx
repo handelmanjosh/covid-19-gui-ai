@@ -1,32 +1,61 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { PersonController, Virus } from './components/Person';
 import Graph from './components/Graph';
 import { AreaController, Path, Schedule } from './components/Area';
+import SingleButton from './components/SingleButton';
+import ControlMethodController from './components/ControlMethodController';
+import ControlMethod from './components/ControlMethod';
+import ValueChanger from './components/ValueChanger';
 
 let canvas: HTMLCanvasElement;
 let context: CanvasRenderingContext2D;
 let people: PersonController;
 let environment: AreaController;
+let virus: Virus;
 let ran = 0;
-const population = 100;
-const mySchedule: {schedule: Schedule | null, interval: any, time: number} = {schedule: null, interval: null, time: 0}
+const population = 500;
+const params: {started: boolean, time: number, maskCoefficient: number} = {started: false, time: 0, maskCoefficient: 0}
 function App() {
+  const [started, setStarted] = useState<boolean>(false);
+  const [loaded, setLoaded] = useState<boolean>(false);
+  const [time, setTime] = useState<number>(0);
   useEffect(() => {
       if (ran === 1) return;
       canvas = document.getElementById("canvas") as HTMLCanvasElement; 
       context = canvas.getContext("2d")!;
       canvas.height = 800;
       canvas.width = 800;
-      const virus = new Virus(1, 1000, 5);
+      //each time step is 1/1000 of a period, there are 12 periods in each day. So 12,000 time steps is one day
+      virus = new Virus(0.05, 12000, 5);
       environment = new AreaController(16, canvas, context);
-      people = new PersonController(10, environment, virus, canvas, context);
-      requestAnimationFrame(frame);
+      people = new PersonController(population, environment, virus, canvas, context);
+      setLoaded(true);
+      requestAnimationFrame(frame)
       ran++;
   }, []);
+  const start = () => {
+    setStarted(true);
+    params.time = 0;
+    params.started = true;
+    people.init();
+  }
+  const reset = () => {
+    setStarted(false);
+    setLoaded(false);
+    params.started = false;
+    virus = new Virus(.05, 12000, 5);
+    environment = new AreaController(16, canvas, context);
+    people = new PersonController(population, environment, virus, canvas, context);
+    setLoaded(true);
+  }
   const frame = () => {
     resetCanvas();
     environment.draw();
-    people.draw();
+    if (params.started) {
+      people.draw();
+      params.time++;
+      setTime(params.time);
+    }  
     requestAnimationFrame(frame);
   }
   const resetCanvas = () => {
@@ -60,49 +89,57 @@ function App() {
     }
     return total;
   }
-  
-  const click = () => {
-    const schedule = new Schedule(environment);
-    console.log("clicked");
-    console.log(schedule.PathList);
-    mySchedule.schedule = schedule
-    mySchedule.time = 0;
-    mySchedule.interval = setInterval(tempMoveAndDraw, 20);
+  const getContactRate = () => {
+    const rate = people?.contactRate;
+    return rate ?? 0;
   }
-  const tempMoveAndDraw = () => {
-    const next = mySchedule.schedule?.next();
-    console.log(mySchedule.time);
-    mySchedule.time++;
-    if (next) {
-      const location = next;
-      const width = canvas.width / 16;
-      const big = location[0];
-      const mini = location[1];
-      context.fillStyle = "red";
-      context.fillRect(big[0] * width + mini[0] * 2, big[1] * width + mini[1] * 2, 2, 2);
-    } else {
-      if (mySchedule.time >= 1000) {
-        mySchedule.time = 0;
-        const value = mySchedule.schedule?.nextIndex();
-        if (!value) {
-          clearInterval(mySchedule.interval);
-        }
-      }
-
-    }
+  const enableMasking = () => {
+    console.log(params.maskCoefficient);
+    people.PersonList.forEach(person => person.maskCoefficient = params.maskCoefficient);
   }
-
+  const removeMasking = () => {
+    people.PersonList.forEach(person => person.maskCoefficient = 0);
+  }
+  const enableLockdown = () => {
+    people.PersonList.forEach(person => person.lockdown = true)
+  }
+  const disableLockdown = () => {
+    people.PersonList.forEach(person => person.lockdown = false);
+  }
+  const changeMaskCoefficient = (n: number) => {
+    params.maskCoefficient = n;
+  }
   return (
-    <div className="flex flex-col justify-center items-center h-[100vh]"> 
+    <div className="flex flex-col justify-center items-center gap-4 h-[100vh]">
+      <p className="text-center text-xl font-bold">{`Time: ${time}`}</p> 
       <div className="flex flex-row gap-4 items-center justify-center">
-        <div className="flex flex-col items-center justify-center gap-1">
+        <div className="flex flex-col items-center justify-center gap-4">
           <Graph title="Susceptibles" color="blue" getParameter={getSusceptibles} max={population} min={0} />
           <Graph title="Infected" color="red" getParameter={getInfected} max={population} min={0} />
           <Graph title="Recovered" color="green" getParameter={getRecovered} max={population} min={0} />
+          <Graph title="Contact Rate" color="orange" getParameter={getContactRate} max={1} min={0} />
         </div>
-        <canvas className="border-black border-2" id="canvas" />
+        <div className="flex flex-col items-center justify-center gap-4">
+          <canvas className="border-black border-2" id="canvas" />
+          <div className="flex flex-row items-center justify-center">
+            {(started || !loaded) ? <></> : <SingleButton click={start} text="Start" />}
+            {started && loaded ? <SingleButton click={reset} text="Reset" /> : <></>}
+          </div>
+        </div>
+        <div className="flex flex-col justify-center items-center gap-4">
+          <ControlMethod name="Masking" apply={enableMasking} remove={removeMasking} />
+          <ControlMethod name="Lockdown" apply={enableLockdown} remove={disableLockdown} />
+        </div>
       </div>
-      <button className="active:bg-blue-600" onClick={click}>Click me</button>
+      <div className="flex flex-row justify-center items-center gap-4">
+        <ValueChanger 
+          changeTarget={changeMaskCoefficient} 
+          name="Mask Coefficient: (% reduction in virus infectivity)" 
+          max={1}
+          min={0}
+          step={0.01}
+        />
+      </div>
     </div>
   );
 }
