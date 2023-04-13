@@ -6,9 +6,10 @@ type ValueChangerProps = {
     min: number;
     step: number;
     name: string;
+    disabled: boolean;
 }
-export default function ValueChanger({changeTarget, max, min, step, name }: ValueChangerProps) {
-    const [value, setValue] = useState<number>(0);
+export default function ValueChanger({changeTarget, max, min, step, name, disabled }: ValueChangerProps) {
+    const [value, setValue] = useState<number>(min);
     useEffect(() => {
         changeTarget(value);
     }, [value])
@@ -16,6 +17,7 @@ export default function ValueChanger({changeTarget, max, min, step, name }: Valu
         <div className="flex flex-col justify-center items-center">
             <p className="text-base text-center">{name}</p>
             <input
+                disabled={disabled}
                 type="range"
                 value={value}
                 min={min}

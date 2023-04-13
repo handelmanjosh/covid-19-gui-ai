@@ -1,4 +1,5 @@
-import { AreaController, Schedule } from "./Area";
+
+import { AreaController, AreaRole, Maybe, Schedule, Path } from "./Area";
 export class Virus {
     infectivity: number; // chance one infected has to infect a susceptible it was in contact with
     recoveryTime: number; // days until infected is recovered
@@ -16,25 +17,49 @@ export class PersonController {
     Virus: Virus;
     canvas: HTMLCanvasElement;
     context: CanvasRenderingContext2D;
-    public contactRate: number;
+    public banned: Exclude<AreaRole, "none">[];
+    public contactRate: number[];
+    public infectRate: number[];
     constructor(n: number, areaController: AreaController, virus: Virus, canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
         this.PersonList = [];
         this.canvas = canvas;
         this.context = context;
         this.Virus = virus;
         this.AreaController = areaController;
+        console.log({n});
         for (let i = 0; i < n; i++) {
             const person = new Person(areaController, areaController.delta);
             this.PersonList.push(person);
         }
-        this.contactRate = 0;
+        this.contactRate = [];
+        this.infectRate = [];
+        this.banned = [];
     }
     draw = () => {
-        this.PersonList.forEach(person => person.draw(this.context));
+        this.PersonList.forEach(person => person.draw(this.context, this.banned));
         this.infectAll();
+    }
+    ban = (location: Exclude<AreaRole, "none">): boolean => {
+        try {
+            this.banned.push(location);
+            return true;
+        } catch (e) {
+            console.error(e);
+            return false;
+        }
+    }
+    unban = (location: Exclude<AreaRole, "none">): boolean => {
+        try {
+            this.banned.splice(this.banned.indexOf(location), 1);
+            return true;
+        } catch (e) {
+            console.error(e);
+            return false;
+        }
     }
     infectAll = () => {
         let contacts = 0;
+        let infected = 0;
         this.PersonList.forEach(person1 => {
             this.PersonList.forEach(person2 => {
                 if (person1 !== person2) {
@@ -43,13 +68,23 @@ export class PersonController {
                         contacts++;
                         const r = Math.random();
                         if (r < this.Virus.infectivity * (1 - person1.maskCoefficient)) {
+                            infected++;
                             person2.becomeInfected(this.Virus);
                         }
+                    } else if (personDistance(person1, person2) < person1.radius) {
+                        contacts++;
                     }
                 }
             });
         });
-        this.contactRate = contacts / this.PersonList.length;
+        this.contactRate.push(contacts / this.PersonList.length);
+        if (this.contactRate.length > 5) {
+            this.contactRate.splice(0, 1);
+        }
+        this.infectRate.push(infected / this.PersonList.length);
+        if (this.infectRate.length > 100) {
+            this.infectRate.splice(0, 1);
+        }
     }
     init = () => {
         this.PersonList.sort(() => Math.random() - 0.5) 
@@ -64,9 +99,11 @@ export default class Person {
     radius: number;
     state: "s" | "i" | "r";
     schedule: Schedule;
+    tempPath: Maybe<Path>
     recoveryTime: number | undefined;
     width: number;
     time: number;
+    areaController: AreaController
     miniMoved: number[][];
     setLeftOverTime: boolean;
     leftOverTime: number;
@@ -81,6 +118,7 @@ export default class Person {
         this.state = "s";
         this.radius = 4;
         this.schedule = new Schedule(areaController);
+        this.areaController = areaController;
         this.x = 0;
         this.y = 0;
         this.width = width;
@@ -91,6 +129,7 @@ export default class Person {
         this.moveTime = 0;
         this.maskCoefficient = 0;
         this.lockdown = false;
+        this.tempPath = null;
     }   
     infect = (p: Person): boolean => {
         if (this.state !== "i" || p.state !== "s" || personDistance(this, p) > this.radius) {
@@ -103,9 +142,9 @@ export default class Person {
         this.state = "i";
         this.recoveryTime = virus.recoveryTime;
     }
-    draw = (context: CanvasRenderingContext2D) => {
+    draw = (context: CanvasRenderingContext2D, banned: Exclude<AreaRole, "none">[]) => {
         if (!this.lockdown) {
-            this.move();
+            this.move(banned);
         }
         this.updateFrame();
         let color = (this.state === "s") ? "blue" : (this.state === "r") ? "green" : "red";
@@ -125,8 +164,26 @@ export default class Person {
             }
         }
     }
-    move = () => {
-        const nextLocation = this.schedule.next();
+    move = (banned: Exclude<AreaRole, "none">[]) => {
+        let nextLocation: Maybe<number[][]>;
+        const type: Maybe<Exclude<AreaRole, "none">> = this.schedule.currentType();
+        if (type && !banned.includes(type)) {
+            nextLocation = this.schedule.next();
+            this.tempPath = null;
+        } else {
+            //basically this moves the person home if necessary
+            const currentLocation: Maybe<number[][]> = this.schedule.next();
+            if (currentLocation) {
+                if (this.tempPath) {
+                    nextLocation = this.tempPath.next();
+                } else {
+                    this.tempPath = new Path(this.areaController, currentLocation, this.schedule.house);
+                    nextLocation = this.tempPath.next();
+                }
+            } else {
+                nextLocation = null
+            }
+        }
         if (nextLocation) {
             const big = nextLocation[0];
             const mini = nextLocation[1];

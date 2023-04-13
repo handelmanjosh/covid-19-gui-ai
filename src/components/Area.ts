@@ -4,9 +4,9 @@ import PF from 'pathfinding'
 const miniPath: number[][] = [];
 
 type Direction = "top" | "bottom" | "left" | "right";
-type AreaRole = "work" | "social" | "housing" | "shopping" | "none";
+export type AreaRole = "work" | "social" | "housing" | "shopping" | "none";
 type ScaledOption<T> = [T, number][]
-type Maybe<T> = T | null;
+export type Maybe<T> = T | null;
 type OrganizedAreaList = {work: number[][], social: number[][], housing: number[][], shopping: number[][]};
 
 
@@ -227,15 +227,20 @@ const getRandomWithinArea = () => {
 }
 export class Schedule {
     PathList: Path[];
+    typed: Exclude<AreaRole, "none">[];
+    public house;
     private index: number;
     constructor(areaController: AreaController) {
         this.PathList = [];
+        this.typed = [];
         this.index = 0;
         const scheduleParams: ScaledOption<Exclude<AreaRole, "none">> = [["housing" , 3], ["shopping", 1], ["social", 3], ["work", 5]]
         const house: number[][] = this.makeHouse(areaController.OrganizedAreaList);
+        this.house = house;
         const schedule: number[][][] = [house, ];
         for (let i = 0; i < 12; i++){
             const option = getRandomScaledOption(scheduleParams);
+            this.typed.push(option);
             if (option === "housing") {
                 schedule.push(house);
             } else {
@@ -244,6 +249,7 @@ export class Schedule {
                 schedule.push([location, miniLocation]);
             }
         }
+        this.typed.push("housing");
         for (let i = 0; i < schedule.length - 1; i++) {
             const current = schedule[i];
             const next = schedule[i+1];
@@ -259,6 +265,10 @@ export class Schedule {
         const house = getRandomOfType(list, "housing");
         const index = getRandomWithinArea();
         return [house, index];
+    }
+    currentType = (): Maybe<Exclude<AreaRole, "none">> => {
+        const type = this.typed[this.index];
+        return type ?? null;
     }
     next = (): number[][] | null => {
         let n = this.PathList[this.index].next();

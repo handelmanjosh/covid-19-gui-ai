@@ -12,12 +12,17 @@ export default function Graph({title, color, getParameter, max, min}: GraphProps
     const canvasRef = useRef<any>(null);
     const contextRef = useRef<{context: CanvasRenderingContext2D | null}>({context: null});
     const [data, setData] = useState<number[]>([]);
+    const[stats, setStats] = useState({max: max, min: min})
     useEffect(() => {
         canvasRef.current.width = 200;
         canvasRef.current.height = 100;
         contextRef.current.context = canvasRef.current.getContext("2d");
         requestAnimationFrame(frame);
     }, []);
+     useEffect(() => {
+        stats.max = max;
+        stats.min = min;
+    }, [max, min]);
     const frame = () => {
         clearCanvas();
         updateData();
@@ -28,7 +33,7 @@ export default function Graph({title, color, getParameter, max, min}: GraphProps
         let context = contextRef.current.context!;
         context.beginPath();
         let count = 0;
-        let diff = max - min;
+        let diff = stats.max - stats.min;
         let yScale = canvasRef.current.height / diff;
         let xScale = (data.length / canvasRef.current.width !== 0) ? data.length / canvasRef.current.width : 1;
         data.forEach(point => {

@@ -16,7 +16,7 @@ export default function ControlMethod({ apply, remove,  name}: ControlMethodProp
                 remove();
             }
         } catch (e) {
-            console.error(e);
+
         }
     }, [active]);
     return (
