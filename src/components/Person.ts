@@ -34,6 +34,7 @@ export class PersonController {
         this.contactRate = [];
         this.infectRate = [];
         this.banned = [];
+        this.PersonList.forEach(person => person.makeNetwork(this.PersonList, Math.floor(n / 4)))
     }
     draw = () => {
         this.PersonList.forEach(person => person.draw(this.context, this.banned));
@@ -105,6 +106,8 @@ export default class Person {
     time: number;
     areaController: AreaController
     miniMoved: number[][];
+    network: Person[];
+    fearFactor: number;
     setLeftOverTime: boolean;
     leftOverTime: number;
     moveTime: number;
@@ -130,6 +133,8 @@ export default class Person {
         this.maskCoefficient = 0;
         this.lockdown = false;
         this.tempPath = null;
+        this.fearFactor = Math.random(); // higher fear factor => person is more scared
+        this.network = []
     }   
     infect = (p: Person): boolean => {
         if (this.state !== "i" || p.state !== "s" || personDistance(this, p) > this.radius) {
@@ -164,10 +169,30 @@ export default class Person {
             }
         }
     }
+    makeNetwork = (list: Person[], networkSize: number) => {
+        const numbers = Array.from({length: list.length}, (_, i: number) => i);
+        for (let i = numbers.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+        }
+        for (let i = 0; i < networkSize && i < numbers.length; i++) {
+            this.network.push(list[numbers[i]])
+        }
+    }
+    notScared = (): boolean => {
+        let infected = 0
+        this.network.forEach(person => {
+            if (person.state === "i") {
+                infected++;
+            }
+        });
+        const fear = (infected / this.network.length) * this.fearFactor;
+        return (Math.random() < fear) ? false : true;
+    }
     move = (banned: Exclude<AreaRole, "none">[]) => {
         let nextLocation: Maybe<number[][]>;
         const type: Maybe<Exclude<AreaRole, "none">> = this.schedule.currentType();
-        if (type && !banned.includes(type)) {
+        if (type && !banned.includes(type) && this.notScared()) {
             nextLocation = this.schedule.next();
             this.tempPath = null;
         } else {

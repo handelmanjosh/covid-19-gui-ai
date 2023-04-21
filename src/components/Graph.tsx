@@ -12,7 +12,7 @@ export default function Graph({title, color, getParameter, max, min}: GraphProps
     const canvasRef = useRef<any>(null);
     const contextRef = useRef<{context: CanvasRenderingContext2D | null}>({context: null});
     const [data, setData] = useState<number[]>([]);
-    const[stats, setStats] = useState({max: max, min: min})
+    const [stats, setStats] = useState({max: max, min: min})
     useEffect(() => {
         canvasRef.current.width = 200;
         canvasRef.current.height = 100;

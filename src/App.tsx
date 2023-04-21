@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { PersonController, Virus } from './components/Person';
 import Graph from './components/Graph';
-import { AreaController, Path, Schedule } from './components/Area';
+import { AreaController } from './components/Area';
 import SingleButton from './components/SingleButton';
-import ControlMethodController from './components/ControlMethodController';
 import ControlMethod from './components/ControlMethod';
 import ValueChanger from './components/ValueChanger';
 
@@ -168,7 +167,7 @@ function App() {
     params.startedInfected = n;
   }
   return (
-    <div className="flex flex-col justify-center items-center mt-20 gap-4 h-[100vh]">
+    <div className="flex flex-col justify-center items-center gap-4 h-[200vh]">
       <p className="text-center text-xl font-bold">{`Time: ${time}`}</p> 
       <div className="flex flex-row gap-4 items-center justify-center">
         <div className="flex flex-col items-center justify-center gap-4">
@@ -197,6 +196,10 @@ function App() {
         </div>
       </div>
       <div className="flex flex-row justify-center items-center gap-4">
+        <div className="flex flex-col justify-center items-center gap-2">
+          {/* <p className="text-lg text-center"> Environment Parameters </p> */}
+          {/*Set density, set ratios */}
+        </div>
         <div className="flex flex-col justify-center items-center gap-2">
           <p className="text-lg text-center"> Virus Parameters </p>
           <ValueChanger
