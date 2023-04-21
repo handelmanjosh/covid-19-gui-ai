@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/agent-based-model/static/css/main.91b2632c.css",
+    "main.js": "/agent-based-model/static/js/main.3b8c6599.js",
+    "static/js/787.f6b2eaaf.chunk.js": "/agent-based-model/static/js/787.f6b2eaaf.chunk.js",
+    "index.html": "/agent-based-model/index.html",
+    "main.91b2632c.css.map": "/agent-based-model/static/css/main.91b2632c.css.map",
+    "main.3b8c6599.js.map": "/agent-based-model/static/js/main.3b8c6599.js.map",
+    "787.f6b2eaaf.chunk.js.map": "/agent-based-model/static/js/787.f6b2eaaf.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.91b2632c.css",
+    "static/js/main.3b8c6599.js"
+  ]
+}
